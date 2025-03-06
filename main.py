@@ -27,7 +27,7 @@ ground = Entity(model='plane', collider='box', scale=640, texture='grass', textu
 
 #зрение от первого лица и игрок:
 editor_camera = EditorCamera(enabled=False, ignore_paused=True)
-player = FirstPersonController(model='cube', z=-10, color=color.blue, origin_y=-0.5, speed=8, collider='box')
+player = FirstPersonController(model='cube', z=-10, color=color.cyan, origin_y=-0.5, speed=8, collider='box')
 player.collider = BoxCollider(player, Vec3(0,1,0), Vec3(1,2,1))
 is_third_person = False
 
