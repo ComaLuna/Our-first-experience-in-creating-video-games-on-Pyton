@@ -1,3 +1,5 @@
+import sys
+
 from ursina import *
 from ursina.prefabs.first_person_controller import FirstPersonController
 from ursina.shaders import lit_with_shadows_shader
@@ -29,29 +31,38 @@ ground = Entity(model='plane', collider='box', scale=640, texture='grass', textu
 editor_camera = EditorCamera(enabled=False, ignore_paused=True)
 player = FirstPersonController(model='cube', z=-10, color=color.cyan, origin_y=-0.5, speed=8, collider='box')
 player.collider = BoxCollider(player, Vec3(0,1,0), Vec3(1,2,1))
-is_third_person = False
 
 #Ui настроек (пока не работает)
-# wp = WindowPanel(
-#     title='Custom Window',
-#     content=(
-#         Text('Name:'),
-#         InputField(name='name_field'),
-#         Button(text='Submit', color=color.azure),
-#         Slider(),
-#         Slider(),
-#         ButtonGroup(('test', 'eslk', 'skffk'))
-#     ),
-#     popup=False
-# )
-# wp.enabled = False
-# wp.y = wp.panel.scale_y / 2 * wp.scale_y  # center the window panel
-# wp.layout()
+
+def toggleSettingPanel():
+    settings_panel.enabled = not settings_panel.enabled
+
+def create_settings_panel():
+    def apply_settings():
+        settings_panel.enabled = False  # Закрываем панель после применения настроек
+    def ExitButton():
+        sys.exit()
+
+    settings_panel = WindowPanel(title="Settings", content=(
+        Text("Full screen:"),
+        Slider(min=0, max=1, step = 1, default=1, color=color.azure, dynamic=False),
+        Button(text="Close menu", color=color.dark_gray, on_click=apply_settings),
+        Button(text="Exit", color=color.red, on_click=ExitButton),
+    ), position=(0, 0))
+    FullScreenMode = settings_panel.content[1]
+    FullScreenMode.on_value_changed = toggle_fullscreen
+    return settings_panel, FullScreenMode
+
+def toggle_fullscreen(): #Код на изменения фулл скрина
+    if FullScreenMode.value > 0.5:
+        window.fullscreen = True
+    else:
+        window.fullscreen = False
+
 b = Button(parent=camera.ui, icon='assets\settings.png', color=color.black, scale=0.09, x=-0.84, y=0.45)
-# if b.on_click:
-#     wp.enabled = True
-
-
+b._on_click = toggleSettingPanel
+settings_panel, FullScreenMode = create_settings_panel()
+settings_panel.enabled = False
 
 
 #Функции для биндов
@@ -59,6 +70,10 @@ b = Button(parent=camera.ui, icon='assets\settings.png', color=color.black, scal
 def mouselocker(key):
     if key == 'left alt':
         mouse.locked = not mouse.locked
+def esc_Menu(key):
+    if key == 'escape':
+        settings_panel.enabled = not settings_panel.enabled
+
 # Это в разработке
 # Сменя режима камеры с 1го лица на 3тие
 # def switch_camera(key):
@@ -75,6 +90,7 @@ def mouselocker(key):
 # Разблокировка мыши по нажатию клавиши:
 def input(key):
     mouselocker(key)
+    esc_Menu(key)
     #switch_camera(key)
 
 
