@@ -7,6 +7,9 @@ from ursina.prefabs.first_person_controller import FirstPersonController
 from ursina.shaders import lit_with_shadows_shader
 from numpy import floor
 from perlin_noise import PerlinNoise #Шум перлина дужен для генерации(ОН НЕ БЕСПОЛЕЗЕН)
+import random
+import time
+
 
 
 #Окно игры:
@@ -38,22 +41,33 @@ player.collider = BoxCollider(player, Vec3(0,1,0), Vec3(1,2,1))
 #Ui настроек
 def ExitButton():
     sys.exit()
+
 def toggleSettingPanel():
     settings_panel.enabled = not settings_panel.enabled
 
+def toggle_fullscreen():
+    if FullScreenMode.value > 0.5:
+        window.fullscreen = True
+    else:
+        window.fullscreen = False
+
+def set_fps(value):
+    application.target_fps = int(value)
+
 def create_settings_panel():
     def apply_settings():
-        settings_panel.enabled = False  # Закрываем панель после применения настроек
+        settings_panel.enabled = False
 
     settings_panel = WindowPanel(title="Settings", content=(
         Text("Full screen:"),
-        Slider(min=0, max=1, step = 1, default=1, color=color.azure, dynamic=False),
-        # Text("World size:"),
-        # Slider(min=30, max=45, step=1, default=30, color=color.azure, dynamic=False),
+        Slider(min=0, max=1, step=1, default=1, color=color.azure, dynamic=False),
+        Text("Target FPS:"),
+        Slider(min=30, max=240, step=30, default=60, color=color.azure, dynamic=False),
         Button(text="Close menu", color=color.dark_gray, on_click=apply_settings),
         Button(text="Exit", color=color.red, on_click=ExitButton),
     ), position=(0, 0))
     FullScreenMode = settings_panel.content[1]
+    FPSSlider = settings_panel.content[3]
     FullScreenMode.on_value_changed = toggle_fullscreen
     # WorldSize = settings_panel.content[3]
     # WorldSize.on_value_changed = ChangeWorldSize
@@ -102,8 +116,9 @@ class Voxel(Button): #Класс для блоков
 noise = PerlinNoise(octaves=2, seed=2025)
 amp = 6 #Амплетуда
 freq = 24 #Частота
-terrain_width = 35 # #Ширина и длина
+terrain_width = 20 # #Ширина и длина
 landscale = [[0 for i in range(terrain_width)] for i in range(terrain_width)]
+
 
 for position in range(terrain_width**2):
     x = floor(position / terrain_width)
