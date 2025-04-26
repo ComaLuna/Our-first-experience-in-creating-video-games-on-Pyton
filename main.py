@@ -7,10 +7,8 @@ from ursina.prefabs.first_person_controller import FirstPersonController
 from ursina.shaders import lit_with_shadows_shader
 from numpy import floor
 from perlin_noise import PerlinNoise #Шум перлина дужен для генерации(ОН НЕ БЕСПОЛЕЗЕН)
-import random
 import time
-
-
+from random import randint
 
 #Окно игры:
 app = Ursina(
@@ -113,7 +111,7 @@ class Voxel(Button): #Класс для блоков
         )
 
 #Генерация Мира
-noise = PerlinNoise(octaves=2, seed=2025)
+noise = PerlinNoise(octaves=2, seed=randint(1,10000))
 amp = 6 #Амплетуда
 freq = 24 #Частота
 terrain_width = 20 # #Ширина и длина
