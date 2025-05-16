@@ -227,6 +227,8 @@ def update():
     global health, is_dead
     Check_health(health)
     regen(is_dead, health)
+    def_moving()
+    moving_sound()
 
 # Если прошло 5 секунд без урона - восстанавливаем здоровье
 def regen(is_dead,health):
@@ -261,4 +263,27 @@ def revive():
     # Возвращаем игрока на стартовую позицию
     player.position = (0, 0, 0)
     is_dead = False
+# Функции ходьбы
+moving = False
+walk_sound = Audio('sounds/Moving.mp3', loop=False, autoplay=False)
+def def_moving():
+    global moving
+
+    # Проверяем нажатия клавиш
+    if held_keys['a']:  # движение влево
+        #player.x -= 5 * time.dt
+        moving = True
+    elif held_keys['d']:  # движение вправо
+        moving = True
+    elif held_keys['w']:  # движение вперёд
+       moving = True
+    elif held_keys['s']:  # движение назад
+        moving = True
+    else:
+        moving = False
+
+    # Воспроизведение звука ходьбы
+def moving_sound():
+    if moving and not walk_sound.playing:
+        walk_sound.play()
 app.run() #Старт игры
