@@ -21,11 +21,16 @@ app = Ursina(
 )
 
 #Модельки мира
+scene.Shader = lit_with_shadows_shader
 sun = DirectionalLight()
 sun.look_at(Vec3(1, -1, 0))
 sky = Sky()
-scene.fog_density = 0.05
 scene.fog_color = color.rgb(150,150,200)
+def fogScattering():
+    if player.speed > 10:
+        scene.fog_density = lerp(scene.fog_density, 0.07, time.dt)
+    else:
+        scene.fog_density = lerp(scene.fog_density, 0.04, time.dt)
 
 
 #зрение от первого лица и игрок:
@@ -95,31 +100,119 @@ def esc_Menu(key):
 
 #Текстуры
 grass_texture = load_texture("assets/textures/grass.png")
-class Voxel(Button): #Класс для блоков
-    def __init__(self, position=(0, 0, 0), texture=grass_texture): # Определяем конструктор
+sand_texture = load_texture("assets/textures/sand.png")
+dirt_texture = load_texture("assets/textures/dirt.png")
+log_texture = load_texture("assets/textures/Tree/log.png")
+leaf_texture = load_texture("assets/textures/Tree/img.png")
+
+
+class Voxel(Button):
+    def __init__(self, position=(0, 0, 0), texture=grass_texture):
         super().__init__(
-            parent=scene, # Указываем сцену, чтобы объект был виден в игре
-            model="assets/models/block", # Указываем модель объекта
-            scale=0.5, # Указываем масштаб объекта
-            texture=texture, # Указываем текстуру объекта
-            position=position, # Указываем позицию объекта
-            origin_y=0.5, # Указываем точку опоры объекта
-            color=color.color(0, 0, random.uniform(0.9, 1)), # Указываем цвет объекта как случайный оттенок зеленого
-            shader = transition_shader
+            parent=scene,
+            model='cube',
+            texture=texture,
+            position=position,
+            origin_y=0.5,
+            scale=1,
+            color=color.color(0, 0, random.uniform(0.9, 1)),
+            # highlight_color=color.lime,
+            # shader=lit_with_shadows_shader
         )
+    #     self.health = 10  # Количество ударов для разрушения
+    #     self.max_health = 10
+    #     self.break_stage = 0  # Текущая стадия разрушения (0-4)
+    #     self.break_effect = None  # Эффект трещин
+    #     self.texture.filtering = None
+    #
+    # def damage(self):
+    #     if self.health <= 0:
+    #         return
+    #
+    #     self.health -= 1
+    #     self.hit_sound.play()
+    #
+    #     # Обновляем стадию разрушения (0-4)
+    #     self.break_stage = 4 - int((self.health / self.max_health) * 4)
+    #     self.update_break_effect()
+    #
+    #     if self.health <= 0:
+    #         self.destroy()
+    #
+    # def update_break_effect(self):
+    #     if self.break_stage > 0:
+    #         if not self.break_effect:
+    #             self.break_effect = Entity(
+    #                 parent=self,
+    #                 model='cube',
+    #                 texture='assets/textures/cracks.png',
+    #                 scale=1.01,
+    #                 double_sided=True,
+    #                 transparent=True
+    #             )
+    #         # Меняем UV текстуры для разных стадий
+    #         self.break_effect.texture_offset = (0, (4 - self.break_stage) * 0.25)
+    #     elif self.break_effect:
+    #         destroy(self.break_effect)
+    #         self.break_effect = None
+    #
+    # def destroy(self):
+    #     # Эффект разрушения
+    #     self.break_sound.play()
+    #     for i in range(8):  # Частицы
+    #         particle = Entity(
+    #             model='cube',
+    #             texture=self.texture,
+    #             position=self.position,
+    #             scale=0.2,
+    #             lifespan=0.8
+    #         )
+    #         particle.animate_position(
+    #             particle.position + Vec3(random.uniform(-1, 1), random.uniform(-0.5, 1), random.uniform(-1, 1)),
+    #             duration=0.8
+    #         )
+    #         particle.animate_scale(0, duration=0.8)
+    #
+    #     # Удаляем блок из мира
+    #     block_pos = (int(self.x), int(self.y), int(self.z))
+    #     if block_pos in blocks:
+    #         del blocks[block_pos]
+    #     destroy(self)
+# Класс для деревьев
+class Tree:
+    def __init__(self, position):
+        x, y, z = position
+        # Ствол дерева (3 блока в высоту)
+        for i in range(3):
+            block_pos = (x, y + i + 1, z)
+            blocks[block_pos] = Voxel(position=block_pos, texture=log_texture)
+
+        # Листья (простая крона)
+        leaf_positions = [
+            (x, y + 4, z),  # центр
+            (x + 1, y + 4, z), (x - 1, y + 4, z), (x, y + 4, z + 1), (x, y + 4, z - 1),  # крест
+            (x, y + 5, z)  # верх
+        ]
+
+        for pos in leaf_positions:
+            blocks[pos] = Voxel(position=pos, texture=leaf_texture)
+
 
 #Генерация Мира
 # Настройки генерации мира
 CHUNK_SIZE = 1  # Размер чанка
-RENDER_DISTANCE = 12  # В чанках
+RENDER_DISTANCE = 10  # В чанках
 loaded_chunks = {}  # Словарь для хранения загруженных чанков
 blocks = {}  # Словарь для хранения всех блоков
 
 # Генерация мира
 noise = PerlinNoise(octaves=2, seed=randint(1, 10000))
+biome_noise = PerlinNoise(octaves=1, seed=randint(1, 10000))
+tree_noise = PerlinNoise(octaves=3, seed=randint(1, 10000))
 amp = 6
 freq = 24
-
+BIOME_SCALE = 10000
+DESERT_THRESHOLD = 0.000001
 
 def get_chunk_key(position):
     x = floor(position[0] / CHUNK_SIZE)
@@ -139,64 +232,79 @@ def generate_chunk(chunk_x, chunk_z):
             world_x = x + chunk_x * CHUNK_SIZE
             world_z = z + chunk_z * CHUNK_SIZE
 
-            # Генерация высоты с помощью шума Перлина
+            # Определяем биом (пустыня или обычная местность)
+            biome_value = biome_noise([world_x / BIOME_SCALE, world_z / BIOME_SCALE])
+            is_desert = biome_value > DESERT_THRESHOLD
+
+            # Генерация высоты
             y = floor(noise([world_x / freq, world_z / freq]) * amp)
 
+            # Основной блок (трава или песок)
             block_pos = (world_x, y, world_z)
-            blocks[block_pos] = Voxel(position=block_pos)
+            blocks[block_pos] = Voxel(
+                position=block_pos,
+                texture=sand_texture if is_desert else grass_texture
+            )
 
+            # 3 слоя грязи под землей
+            for i in range(1, 4):
+                dirt_pos = (world_x, y - i, world_z)
+                blocks[dirt_pos] = Voxel(position=dirt_pos, texture=dirt_texture)
+
+            # Генерация деревьев (только не в пустыне)
+            if not is_desert and tree_noise([world_x / 10, world_z / 10]) > 0.5:
+                Tree((world_x, y, world_z))
 
 def delete_far_chunks():
     player_chunk = get_chunk_key(player.position)
     chunks_to_remove = []
     for chunk_key in loaded_chunks.keys():
-        # Проверяем расстояние до игрока
         dist = max(abs(chunk_key[0] - player_chunk[0]), abs(chunk_key[1] - player_chunk[1]))
         if dist > RENDER_DISTANCE:
             chunks_to_remove.append(chunk_key)
     for chunk_key in chunks_to_remove:
         remove_chunk(chunk_key)
 
-
-
-
 def remove_chunk(chunk_key):
     if chunk_key in loaded_chunks:
         del loaded_chunks[chunk_key]
-
-        # Удаляем все блоки в этом чанке
         chunk_x, chunk_z = chunk_key
+
         for x in range(CHUNK_SIZE):
             for z in range(CHUNK_SIZE):
                 world_x = x + chunk_x * CHUNK_SIZE
                 world_z = z + chunk_z * CHUNK_SIZE
-                # Находим самый верхний блок в этой колонке
+
+                # Удаляем все блоки в этой колонке
                 for y in range(20, -20, -1):
                     block_pos = (world_x, y, world_z)
                     if block_pos in blocks:
                         destroy(blocks[block_pos])
                         del blocks[block_pos]
-                        break
-
 
 def update_chunks():
     player_chunk = get_chunk_key(player.position)
 
-    # Генерируем новые чанки вокруг игрока
     for x in range(-RENDER_DISTANCE, RENDER_DISTANCE + 1):
         for z in range(-RENDER_DISTANCE, RENDER_DISTANCE + 1):
             chunk_x = player_chunk[0] + x
             chunk_z = player_chunk[1] + z
             generate_chunk(chunk_x, chunk_z)
 
-    # Удаляем далекие чанки
     delete_far_chunks()
 
-# Генерируем начальные чанки вокруг игрока
+# Генерируем начальные чанки
 for x in range(-RENDER_DISTANCE, RENDER_DISTANCE + 1):
     for z in range(-RENDER_DISTANCE, RENDER_DISTANCE + 1):
         generate_chunk(x, z)
 
+class LifespanEntity(Entity):
+    def __init__(self, lifespan=1, **kwargs):
+        super().__init__(**kwargs)
+        self.lifespan = lifespan
+        invoke(destroy, self, delay=lifespan)
+
+Entity.lifespan = None
 # Это в разработке
 # Сменя режима камеры с 1го лица на 3тие
 # def switch_camera(key):
@@ -361,6 +469,7 @@ def input(key):
     mouselocker(key)
     esc_Menu(key)
     taken_damage_pressing_R(key)
+
 # Функция обновления (каждый кадр)
 def update():
     global health, is_dead
@@ -369,4 +478,5 @@ def update():
     def_moving()
     moving_sound()
     update_chunks()
+    fogScattering()
 app.run() #Старт игры
